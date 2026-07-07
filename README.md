@@ -1,21 +1,19 @@
-# Swift (local checkout)
+# Swift
 
 Personal **project management**, **knowledge hub**, and **AI assistant** for Nest.
 
-**Specs and plans** (versioned in the Nest repo): [docs/README.md](docs/README.md)
-
-This directory is **gitignored** by the Nest framework repo except `docs/`. Treat it as your local product checkout.
+**Specs and plans:** [docs/README.md](docs/README.md)
 
 ## Layout
 
 ```text
 apps/swift/
-├── docs/               # specs + plans (tracked in nest repo)
+├── docs/               # specs + plans
 ├── ui/                 # React + TypeScript + Tailwind
 ├── src-tauri/          # Tauri + nest-tauri
 ├── crates/             # swift-data, swift-agent-tools (phase 1+)
 ├── config.example.toml
-└── .cargo/config.toml  # Nest path patches
+└── .cargo/config.toml  # Nest path patches (monorepo dev)
 ```
 
 ## Prerequisites
@@ -29,7 +27,7 @@ apps/swift/
 
 ## First run
 
-From `apps/swift/`:
+From the repo root:
 
 ```bash
 cp config.example.toml config.toml
@@ -38,7 +36,7 @@ cp mcp.example.json mcp.json   # optional; only if [agent.mcp] enabled = true
 
 cd ui
 npm install
-npm run tauri:dev    # runs Tauri from apps/swift/ (finds src-tauri/)
+npm run tauri:dev    # runs Tauri (finds src-tauri/)
 ```
 
 Or run UI and shell separately:
@@ -64,10 +62,10 @@ cargo check            # Rust only (no webview)
 
 ## Nest crates
 
-Path patches in [`.cargo/config.toml`](.cargo/config.toml) and [`src-tauri/Cargo.toml`](src-tauri/Cargo.toml) point at `../../core/crates/` and `../../modules/crates/` in the monorepo.
+Path patches in [`.cargo/config.toml`](.cargo/config.toml) and [`src-tauri/Cargo.toml`](src-tauri/Cargo.toml) point at `../../core/crates/` and `../../modules/crates/` when developing inside the Nest monorepo.
 
 ## Related
 
 - [swift-v1 plan](docs/plan/swift-v1.md)
 - [swift-scaffold-v1](docs/plan/swift-scaffold-v1.md)
-- [Desktop template](../../templates/desktop/)
+- [Nest desktop template](https://github.com/pacificnm/nest/tree/main/templates/desktop)
