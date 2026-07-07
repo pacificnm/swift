@@ -11,6 +11,7 @@ export type ProjectView =
   | "calendar"
   | "network"
   | "knowledge"
+  | "files"
   | "settings"
   | "app-settings"
   | "working-time"
@@ -22,6 +23,7 @@ export const PROJECT_VIEW_LABELS: Record<ProjectView, string> = {
   calendar: "Calendar",
   network: "Network Diagram",
   knowledge: "Knowledge Base",
+  files: "Project Files",
   settings: "Project Options",
   "app-settings": "Swift Settings",
   "working-time": "Change Working Time",
@@ -96,6 +98,8 @@ export function viewToPath(view: ProjectView): string {
       return "/network";
     case "knowledge":
       return "/knowledge";
+    case "files":
+      return "/files";
     case "settings":
       return "/settings";
     case "app-settings":
@@ -112,6 +116,7 @@ export function pathToView(pathname: string): ProjectView {
   if (pathname.startsWith("/calendar")) return "calendar";
   if (pathname.startsWith("/network")) return "network";
   if (pathname.startsWith("/knowledge")) return "knowledge";
+  if (pathname.startsWith("/files")) return "files";
   if (pathname.startsWith("/settings")) return "settings";
   if (pathname.startsWith("/app-settings")) return "app-settings";
   if (pathname.startsWith("/working-time")) return "working-time";

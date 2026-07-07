@@ -12,10 +12,20 @@ tauri-build = { version = "2", features = [] }
 nest-cache = { path = "../../../core/crates/nest-cache" }
 nest-cache-file = { path = "../../../modules/crates/nest-cache-file" }
 nest-core = { path = "../../../core/crates/nest-core" }
+nest-data-postgres = { path = "../../../modules/crates/nest-data-postgres" }
 nest-design = { path = "../../../core/crates/nest-design" }
 nest-image = { path = "../../../core/crates/nest-image" }
 nest-tauri = { path = "../../../core/crates/nest-tauri", features = ["runtime", "async", "images"] }
 nest-theme = { path = "../../../core/crates/nest-theme" }
+swift-data = { path = "../crates/swift-data" }
+chrono = "0.4"
+open = "5"
+rfd = { version = "0.15", default-features = false, features = ["xdg-portal", "tokio"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 tauri = { version = "2", features = [] }
+tokio = { version = "1", features = ["sync"] }
+tracing = "0.1"
+uuid = { version = "1", features = ["serde", "v4"] }
 
 [workspace]

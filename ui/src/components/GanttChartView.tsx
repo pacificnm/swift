@@ -33,8 +33,8 @@ export function GanttChartView() {
   const {
     tasks,
     visibleTasks,
-    selectedTaskId,
-    setSelectedTaskId,
+    selectedTaskIds,
+    selectTask,
     isSummaryCollapsed,
     toggleSummaryCollapsed,
   } = useMockProject();
@@ -154,9 +154,14 @@ export function GanttChartView() {
                 <GridRow
                   key={task.id}
                   task={task}
-                  selected={task.id === selectedTaskId}
+                  selected={selectedTaskIds.includes(task.id)}
                   collapsed={task.isSummary && isSummaryCollapsed(task.id)}
-                  onSelect={() => setSelectedTaskId(task.id)}
+                  onSelect={(event) =>
+                    selectTask(task.id, {
+                      additive: event.ctrlKey || event.metaKey,
+                      range: event.shiftKey,
+                    })
+                  }
                   onToggleCollapse={() => toggleSummaryCollapsed(task.id)}
                   barColor={taskBarColors.get(task.id)}
                 />
@@ -194,7 +199,7 @@ export function GanttChartView() {
 
         <GanttPane
           tasks={visibleTasks}
-          selectedTaskId={selectedTaskId}
+          selectedTaskIds={selectedTaskIds}
           chartWidth={chartWidth}
           weekWidthPx={weekWidthPx}
           fitChart={fitChart}
@@ -204,7 +209,12 @@ export function GanttChartView() {
             syncVerticalScroll("gantt");
             syncHorizontalScroll("gantt");
           }}
-          onSelect={setSelectedTaskId}
+          onSelect={(taskId, event) =>
+            selectTask(taskId, {
+              additive: event.ctrlKey || event.metaKey,
+              range: event.shiftKey,
+            })
+          }
           taskBarColors={taskBarColors}
         />
       </div>
@@ -217,7 +227,7 @@ export function GanttChartView() {
 
 function GanttPane({
   tasks,
-  selectedTaskId,
+  selectedTaskIds,
   chartWidth,
   weekWidthPx,
   fitChart,
@@ -228,14 +238,14 @@ function GanttPane({
   taskBarColors,
 }: {
   tasks: MockTask[];
-  selectedTaskId: string | null;
+  selectedTaskIds: string[];
   chartWidth: number;
   weekWidthPx: number;
   fitChart: boolean;
   viewportRef: RefObject<HTMLDivElement | null>;
   scrollRef: RefObject<HTMLDivElement | null>;
   onScroll: (event: UIEvent<HTMLDivElement>) => void;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, event: MouseEvent<HTMLButtonElement>) => void;
   taskBarColors: Map<string, string>;
 }) {
   const chartHeight = tasks.length * ROW_HEIGHT;
@@ -272,8 +282,8 @@ function GanttPane({
                 key={task.id}
                 task={task}
                 rowIndex={index}
-                selected={task.id === selectedTaskId}
-                onSelect={() => onSelect(task.id)}
+                selected={selectedTaskIds.includes(task.id)}
+                onSelect={(event) => onSelect(task.id, event)}
                 barColor={taskBarColors.get(task.id) ?? "#003f2d"}
               />
             ))}
@@ -333,7 +343,7 @@ function GridRow({
   task: MockTask;
   selected: boolean;
   collapsed: boolean;
-  onSelect: () => void;
+  onSelect: (event: MouseEvent<HTMLDivElement>) => void;
   onToggleCollapse: () => void;
   barColor?: string;
 }) {
@@ -352,7 +362,7 @@ function GridRow({
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          onSelect();
+          onSelect(event as unknown as MouseEvent<HTMLDivElement>);
         }
       }}
       className={[
@@ -440,7 +450,7 @@ function GanttBar({
   task: MockTask;
   rowIndex: number;
   selected: boolean;
-  onSelect: () => void;
+  onSelect: (event: MouseEvent<HTMLButtonElement>) => void;
   barColor: string;
 }) {
   const top = rowIndex * ROW_HEIGHT + 4;
@@ -509,8 +519,8 @@ export function TaskSheetView() {
   const {
     tasks,
     visibleTasks,
-    selectedTaskId,
-    setSelectedTaskId,
+    selectedTaskIds,
+    selectTask,
     isSummaryCollapsed,
     toggleSummaryCollapsed,
   } = useMockProject();
@@ -524,9 +534,14 @@ export function TaskSheetView() {
           <GridRow
             key={task.id}
             task={task}
-            selected={task.id === selectedTaskId}
+            selected={selectedTaskIds.includes(task.id)}
             collapsed={task.isSummary && isSummaryCollapsed(task.id)}
-            onSelect={() => setSelectedTaskId(task.id)}
+            onSelect={(event) =>
+              selectTask(task.id, {
+                additive: event.ctrlKey || event.metaKey,
+                range: event.shiftKey,
+              })
+            }
             onToggleCollapse={() => toggleSummaryCollapsed(task.id)}
             barColor={taskBarColors.get(task.id)}
           />

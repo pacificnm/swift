@@ -12,6 +12,20 @@ export type MockProject = {
   manager: string;
 };
 
+export type ProjectUpdates = {
+  name?: string;
+  slug?: string;
+  description?: string | null;
+  color?: string;
+  manager?: string;
+  pinned?: boolean;
+  archived?: boolean;
+  percentComplete?: number;
+  startDate?: string;
+  /** ISO `yyyy-mm-dd`; pass `null` to clear the finish date. */
+  finishDate?: string | null;
+};
+
 export type NewProjectInput = {
   name: string;
   slug: string;
@@ -53,6 +67,19 @@ export function formatProjectDate(isoDate: string): string {
     day: "numeric",
     year: "numeric",
   });
+}
+
+/** Parse display dates from `formatProjectDate` back to ISO `yyyy-mm-dd`. */
+export function parseProjectDateDisplay(display: string): string | null {
+  const trimmed = display.trim();
+  if (!trimmed || trimmed === "—") {
+    return null;
+  }
+  const date = new Date(trimmed);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toISOString().slice(0, 10);
 }
 
 export function todayIsoDate(): string {
@@ -168,19 +195,6 @@ export type RespectLinksResult =
   | { ok: true; message: string; movedCount: number }
   | { ok: false; message: string };
 
-export function ganttBarForNewTask(
-  existing: MockTask[],
-  durationDays: number,
-  isMilestone: boolean,
-): { left: number; width: number } {
-  const last = existing[existing.length - 1];
-  const width = isMilestone ? 1 : Math.min(8 + durationDays, 24);
-  const left = last
-    ? Math.min(last.bar.left + last.bar.width + 2, 90 - width)
-    : 2;
-  return { left, width };
-}
-
 /** Tasks visible in the grid/Gantt after collapsing summary rows. */
 export function visibleTasks(
   tasks: MockTask[],
@@ -235,7 +249,7 @@ export function canIndentTask(tasks: MockTask[], taskId: string): boolean {
   }
   const task = tasks[index];
   const above = tasks[index - 1];
-  return above.outlineLevel <= task.outlineLevel;
+  return task.outlineLevel <= above.outlineLevel;
 }
 
 export function canOutdentTask(tasks: MockTask[], taskId: string): boolean {
@@ -256,31 +270,105 @@ export function refreshSummaryFlags(tasks: MockTask[]): MockTask[] {
 }
 
 export function indentTaskOutline(tasks: MockTask[], taskId: string): MockTask[] | null {
-  const index = findTaskIndex(tasks, taskId);
-  if (index <= 0 || !canIndentTask(tasks, taskId)) {
-    return null;
-  }
-
-  const end = taskSubtreeEnd(tasks, index);
-  const next = tasks.map((task) => ({ ...task }));
-  next[index - 1] = { ...next[index - 1], isSummary: true };
-  for (let i = index; i < end; i += 1) {
-    next[i] = { ...next[i], outlineLevel: next[i].outlineLevel + 1 };
-  }
-  return refreshSummaryFlags(next);
+  return indentTasksOutline(tasks, [taskId]);
 }
 
 export function outdentTaskOutline(tasks: MockTask[], taskId: string): MockTask[] | null {
-  const index = findTaskIndex(tasks, taskId);
-  if (index < 0 || !canOutdentTask(tasks, taskId)) {
+  return outdentTasksOutline(tasks, [taskId]);
+}
+
+/** Selected task indices that are not nested under another selected task. */
+function topLevelSelectedIndices(tasks: MockTask[], taskIds: string[]): number[] {
+  const indices = taskIds
+    .map((id) => findTaskIndex(tasks, id))
+    .filter((index) => index >= 0)
+    .sort((a, b) => a - b);
+
+  const roots: number[] = [];
+  for (const index of indices) {
+    const insidePriorSelection = roots.some((root) => {
+      const end = taskSubtreeEnd(tasks, root);
+      return index > root && index < end;
+    });
+    if (!insidePriorSelection) {
+      roots.push(index);
+    }
+  }
+  return roots;
+}
+
+export function canIndentTasks(tasks: MockTask[], taskIds: string[]): boolean {
+  const roots = topLevelSelectedIndices(tasks, taskIds);
+  if (roots.length === 0) {
+    return false;
+  }
+  const first = roots[0];
+  if (first <= 0) {
+    return false;
+  }
+  const firstLevel = tasks[first].outlineLevel;
+  if (!roots.every((index) => tasks[index].outlineLevel === firstLevel)) {
+    return false;
+  }
+  // Valid as long as the row above is at the same or a deeper level: the new
+  // level (firstLevel + 1) must not skip past above.level + 1.
+  return firstLevel <= tasks[first - 1].outlineLevel;
+}
+
+export function canOutdentTasks(tasks: MockTask[], taskIds: string[]): boolean {
+  const roots = topLevelSelectedIndices(tasks, taskIds);
+  if (roots.length === 0) {
+    return false;
+  }
+  const firstLevel = tasks[roots[0]].outlineLevel;
+  if (firstLevel <= 0) {
+    return false;
+  }
+  return roots.every((index) => tasks[index].outlineLevel === firstLevel);
+}
+
+/** Indent one or more tasks under the row above the first selection. */
+export function indentTasksOutline(
+  tasks: MockTask[],
+  taskIds: string[],
+): MockTask[] | null {
+  if (!canIndentTasks(tasks, taskIds)) {
     return null;
   }
 
-  const end = taskSubtreeEnd(tasks, index);
+  const roots = topLevelSelectedIndices(tasks, taskIds);
   const next = tasks.map((task) => ({ ...task }));
-  for (let i = index; i < end; i += 1) {
-    next[i] = { ...next[i], outlineLevel: next[i].outlineLevel - 1 };
+  next[roots[0] - 1] = { ...next[roots[0] - 1], isSummary: true };
+
+  for (const index of roots) {
+    const end = taskSubtreeEnd(next, index);
+    for (let i = index; i < end; i += 1) {
+      next[i] = { ...next[i], outlineLevel: next[i].outlineLevel + 1 };
+    }
   }
+
+  return refreshSummaryFlags(next);
+}
+
+/** Outdent one or more tasks by one outline level. */
+export function outdentTasksOutline(
+  tasks: MockTask[],
+  taskIds: string[],
+): MockTask[] | null {
+  if (!canOutdentTasks(tasks, taskIds)) {
+    return null;
+  }
+
+  const roots = topLevelSelectedIndices(tasks, taskIds);
+  const next = tasks.map((task) => ({ ...task }));
+
+  for (const index of roots) {
+    const end = taskSubtreeEnd(next, index);
+    for (let i = index; i < end; i += 1) {
+      next[i] = { ...next[i], outlineLevel: next[i].outlineLevel - 1 };
+    }
+  }
+
   return refreshSummaryFlags(next);
 }
 
@@ -1264,6 +1352,49 @@ export function ganttWeekWidthForViewport(
     return GANTT_WEEK_WIDTH_PX;
   }
   return Math.max(minWeekWidthPx, viewportWidth / TIMESCALE_WEEKS.length);
+}
+
+/** ISO date of the first Gantt timescale column (`Jul 6`). */
+export const TIMELINE_START_ISO = "2026-07-06";
+
+/** Total days spanned by the timescale header (weeks × 7). */
+export const TIMELINE_TOTAL_DAYS = TIMESCALE_WEEKS.length * 7;
+
+/**
+ * Positions a Gantt bar as a percentage of the timescale width, derived from a
+ * task's real start/finish dates so bars line up with the date header columns.
+ *
+ * `left` = days from `TIMELINE_START_ISO` to the start, over the total span.
+ * `width` = task duration over the total span (0 for milestones, which render
+ * as a diamond at `left`).
+ */
+export function ganttBarForDates(
+  startIso: string | null,
+  finishIso: string | null,
+  isMilestone: boolean,
+  durationDays?: number,
+): { left: number; width: number } {
+  const round = (value: number) => Math.round(value * 100) / 100;
+  if (!startIso) {
+    return { left: 2, width: isMilestone ? 0 : 8 };
+  }
+  const offset = calendarDaysBetween(TIMELINE_START_ISO, startIso);
+  const left = Math.min(98, Math.max(0, (offset / TIMELINE_TOTAL_DAYS) * 100));
+  if (isMilestone) {
+    return { left: round(left), width: 0 };
+  }
+  const days =
+    durationDays && durationDays > 0
+      ? durationDays
+      : finishIso
+        ? durationDaysFromRange(startIso, finishIso)
+        : 1;
+  const minWidth = (1 / TIMELINE_TOTAL_DAYS) * 100;
+  const width = Math.min(
+    100 - left,
+    Math.max(minWidth, (days / TIMELINE_TOTAL_DAYS) * 100),
+  );
+  return { left: round(left), width: round(width) };
 }
 
 /** Distinct bar hues per top-level summary group (MS Project–style). */

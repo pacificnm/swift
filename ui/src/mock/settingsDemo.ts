@@ -5,7 +5,8 @@ export type SettingsSectionId =
   | "project"
   | "knowledge"
   | "database"
-  | "agent";
+  | "agent"
+  | "advanced";
 
 export const SETTINGS_SECTIONS: { id: SettingsSectionId; label: string }[] = [
   { id: "file", label: "File" },
@@ -15,6 +16,7 @@ export const SETTINGS_SECTIONS: { id: SettingsSectionId; label: string }[] = [
   { id: "knowledge", label: "Knowledge" },
   { id: "database", label: "Database" },
   { id: "agent", label: "Agent & AI" },
+  { id: "advanced", label: "Advanced" },
 ];
 
 export const DEFAULT_TASK_PRIORITIES = ["Low", "Normal", "High"] as const;
@@ -86,6 +88,8 @@ export type AppSettings = {
     autoSaveInterval: "off" | "1" | "5" | "15";
     recentProjectsLimit: "5" | "10" | "20";
     defaultExportFormat: "swift" | "mspx" | "csv";
+    /** Root folder where per-project file folders are created. */
+    projectFilesRoot: string;
   };
   task: {
     newTaskType: "fixed-duration" | "fixed-units" | "fixed-work";
@@ -133,6 +137,10 @@ export type AppSettings = {
     allowWrites: "false" | "true";
     mcpEnabled: "false" | "true";
   };
+  advanced: {
+    /** Logs every IPC command call + result to `apps/swift/logs/swift`. */
+    commandLogging: "off" | "on";
+  };
 };
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -141,6 +149,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     autoSaveInterval: "5",
     recentProjectsLimit: "10",
     defaultExportFormat: "swift",
+    projectFilesRoot: "",
   },
   task: {
     newTaskType: "fixed-duration",
@@ -183,6 +192,9 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     toolTimeoutSecs: "60",
     allowWrites: "false",
     mcpEnabled: "false",
+  },
+  advanced: {
+    commandLogging: "off",
   },
 };
 
@@ -240,6 +252,7 @@ export function loadAppSettings(): AppSettings {
         chatModel:
           parsed.agent?.chatModel?.trim() || DEFAULT_APP_SETTINGS.agent.chatModel,
       },
+      advanced: { ...DEFAULT_APP_SETTINGS.advanced, ...parsed.advanced },
     };
   } catch {
     return DEFAULT_APP_SETTINGS;

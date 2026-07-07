@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { faXmark } from "../../lib/fontawesome";
+import { faFolderOpen, faXmark } from "../../lib/fontawesome";
 import { Icon } from "../Icon";
+import { hasSwiftData, pickFolder, setSetting } from "../../lib/swift";
 import { useMockSettings } from "../../context/MockSettingsContext";
 import { useProjectView, PROJECT_VIEW_LABELS } from "../../context/ProjectViewContext";
 import { useStatusBar } from "../../context/StatusBarContext";
@@ -206,6 +207,12 @@ function SectionPanel({
               { value: "mspx", label: "Microsoft Project XML" },
               { value: "csv", label: "CSV task export" },
             ]}
+          />
+          <FolderField
+            label="Project files location"
+            file={settings.file}
+            hint="Root folder for attachments. Each project gets its own subfolder."
+            onChange={(projectFilesRoot) => onChange("file", { projectFilesRoot })}
           />
         </SettingsGroup>
       );
@@ -638,6 +645,29 @@ function SectionPanel({
           />
         </SettingsGroup>
       );
+
+    case "advanced":
+      return (
+        <SettingsGroup
+          title="Advanced"
+          description="Diagnostics and troubleshooting. Leave off for normal use."
+        >
+          <SelectField
+            label="Log IPC commands"
+            value={settings.advanced.commandLogging}
+            onChange={(value) =>
+              onChange("advanced", {
+                commandLogging: value as AppSettings["advanced"]["commandLogging"],
+              })
+            }
+            hint="Writes every command call + result to apps/swift/logs/swift. Applies immediately."
+            options={[
+              { value: "off", label: "Off" },
+              { value: "on", label: "On — verbose command logging" },
+            ]}
+          />
+        </SettingsGroup>
+      );
   }
 }
 
@@ -773,6 +803,64 @@ function SelectField({
           </option>
         ))}
       </select>
+      {hint ? <span className="mt-1 block text-xs text-nest-muted">{hint}</span> : null}
+    </label>
+  );
+}
+
+function FolderField({
+  label,
+  file,
+  onChange,
+  hint,
+}: {
+  label: string;
+  file: AppSettings["file"];
+  onChange: (value: string) => void;
+  hint?: string;
+}) {
+  const value = file.projectFilesRoot;
+  const handleBrowse = async () => {
+    if (!hasSwiftData()) {
+      return;
+    }
+    try {
+      const picked = await pickFolder();
+      if (!picked) {
+        return;
+      }
+      onChange(picked);
+      // Persist the whole section immediately so the backend can resolve the
+      // root before the user hits OK (Add File reads
+      // app_settings["file"].projectFilesRoot).
+      await setSetting("file", { ...file, projectFilesRoot: picked });
+    } catch (error) {
+      console.error("Swift: choose files root failed", error);
+    }
+  };
+
+  return (
+    <label className="block text-sm">
+      <span className="mb-1 block font-medium text-nest-foreground">{label}</span>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={value}
+          placeholder="e.g. /home/you/Swift Files"
+          onChange={(event) => onChange(event.target.value)}
+          className="min-w-0 flex-1 rounded-nest-md border border-nest-border bg-nest-background px-3 py-2 font-mono text-xs"
+        />
+        <button
+          type="button"
+          onClick={handleBrowse}
+          disabled={!hasSwiftData()}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-nest-md border border-nest-border px-3 py-2 text-sm hover:bg-nest-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
+          title={hasSwiftData() ? "Browse for a folder" : "Available in the desktop app"}
+        >
+          <Icon icon={faFolderOpen} className="size-3.5" />
+          Browse…
+        </button>
+      </div>
       {hint ? <span className="mt-1 block text-xs text-nest-muted">{hint}</span> : null}
     </label>
   );

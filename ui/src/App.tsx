@@ -1,18 +1,21 @@
 import { useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { GanttChartView, TaskSheetView } from "./components/GanttChartView";
 import {
   CalendarView,
   NetworkDiagramView,
 } from "./components/mock/CalendarView";
 import { KnowledgeView } from "./components/mock/KnowledgeView";
+import { ProjectFilesView } from "./components/mock/ProjectFilesView";
 import { ProjectCenterView } from "./components/mock/ProjectCenterView";
 import { ProjectInfoView } from "./components/mock/ProjectInfoView";
 import { WorkingTimeView } from "./components/mock/WorkingTimeView";
 import { AppSettingsView } from "./components/mock/AppSettingsView";
 import { MockProjectProvider } from "./context/MockProjectContext";
 import { MockKnowledgeProvider } from "./context/MockKnowledgeContext";
+import { MockFilesProvider } from "./context/MockFilesContext";
 import { MockSettingsProvider } from "./context/MockSettingsContext";
 import { GanttLayoutProvider } from "./context/GanttLayoutContext";
 import {
@@ -60,19 +63,23 @@ function runAppBootstrap(
 
 export function App() {
   return (
-    <StatusBarProvider>
-      <ToastProvider>
-        <GanttLayoutProvider>
+    <ErrorBoundary label="app">
+      <StatusBarProvider>
+        <ToastProvider>
+          <GanttLayoutProvider>
           <MockProjectProvider>
             <MockKnowledgeProvider>
-              <MockSettingsProvider>
-                <AppRoutes />
-              </MockSettingsProvider>
+              <MockFilesProvider>
+                <MockSettingsProvider>
+                  <AppRoutes />
+                </MockSettingsProvider>
+              </MockFilesProvider>
             </MockKnowledgeProvider>
           </MockProjectProvider>
-        </GanttLayoutProvider>
-      </ToastProvider>
-    </StatusBarProvider>
+          </GanttLayoutProvider>
+        </ToastProvider>
+      </StatusBarProvider>
+    </ErrorBoundary>
   );
 }
 
@@ -132,21 +139,26 @@ function AppRoutesInner() {
     });
   };
 
+  const location = useLocation();
+
   return (
     <AppShell agentOpen={agentOpen} onToggleAgent={toggleAgent}>
-      <Routes>
-        <Route path="/" element={<Navigate to="/gantt" replace />} />
-        <Route path="/gantt" element={<GanttChartView />} />
-        <Route path="/task-sheet" element={<TaskSheetView />} />
-        <Route path="/calendar" element={<CalendarView />} />
-        <Route path="/network" element={<NetworkDiagramView />} />
-        <Route path="/knowledge" element={<KnowledgeView />} />
-        <Route path="/projects" element={<ProjectCenterView />} />
-        <Route path="/settings" element={<ProjectInfoView />} />
-        <Route path="/app-settings" element={<AppSettingsView />} />
-        <Route path="/working-time" element={<WorkingTimeView />} />
-        <Route path="*" element={<Navigate to="/gantt" replace />} />
-      </Routes>
+      <ErrorBoundary key={location.pathname} label="view">
+        <Routes>
+          <Route path="/" element={<Navigate to="/gantt" replace />} />
+          <Route path="/gantt" element={<GanttChartView />} />
+          <Route path="/task-sheet" element={<TaskSheetView />} />
+          <Route path="/calendar" element={<CalendarView />} />
+          <Route path="/network" element={<NetworkDiagramView />} />
+          <Route path="/knowledge" element={<KnowledgeView />} />
+          <Route path="/files" element={<ProjectFilesView />} />
+          <Route path="/projects" element={<ProjectCenterView />} />
+          <Route path="/settings" element={<ProjectInfoView />} />
+          <Route path="/app-settings" element={<AppSettingsView />} />
+          <Route path="/working-time" element={<WorkingTimeView />} />
+          <Route path="*" element={<Navigate to="/gantt" replace />} />
+        </Routes>
+      </ErrorBoundary>
     </AppShell>
   );
 }

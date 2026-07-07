@@ -52,7 +52,7 @@ import { useGanttLayout } from "../context/GanttLayoutContext";
 import { useProjectView, viewToPath, PROJECT_VIEW_LABELS, type ProjectView } from "../context/ProjectViewContext";
 import { useStatusBar } from "../context/StatusBarContext";
 import { useToast } from "../context/ToastContext";
-import { canIndentTask, canOutdentTask, formatProjectDate, findSuccessorTasks, parsePredecessorIds, taskHasScheduleLinks, todayIsoDate } from "../mock/demo";
+import { canIndentTasks, canOutdentTasks, formatProjectDate, findSuccessorTasks, parsePredecessorIds, taskHasScheduleLinks, todayIsoDate } from "../mock/demo";
 import { quitApp } from "../lib/tauri";
 
 type ProjectRibbonProps = {
@@ -77,6 +77,7 @@ export function ProjectRibbon({
   const {
     tasks,
     selectedTask,
+    selectedTaskIds,
     markTaskOnTrack,
     respectTaskLinks,
     indentTask,
@@ -106,10 +107,10 @@ export function ProjectRibbon({
     taskHasScheduleLinks(tasks, selectedTask.id);
 
   const canIndent =
-    selectedTask !== null && canIndentTask(tasks, selectedTask.id);
+    selectedTaskIds.length > 0 && canIndentTasks(tasks, selectedTaskIds);
 
   const canOutdent =
-    selectedTask !== null && canOutdentTask(tasks, selectedTask.id);
+    selectedTaskIds.length > 0 && canOutdentTasks(tasks, selectedTaskIds);
 
   const successorCount = selectedTask
     ? findSuccessorTasks(tasks, selectedTask.id).length
@@ -155,12 +156,12 @@ export function ProjectRibbon({
   };
 
   const runOutlineChange = (
-    action: (taskId: string) => { ok: boolean; message: string },
+    action: () => { ok: boolean; message: string },
   ) => {
-    if (!selectedTask) {
+    if (selectedTaskIds.length === 0) {
       return;
     }
-    const result = action(selectedTask.id);
+    const result = action();
     if (!result.ok) {
       toast.error(result.message);
       setStatus(result.message, { variant: "error" });
@@ -379,6 +380,13 @@ export function ProjectRibbon({
                 iconTint="info"
                 active={view === "knowledge"}
                 onClick={goToKnowledge}
+              />
+              <RibbonButton
+                label="Files"
+                icon={faFolderOpen}
+                iconTint="info"
+                active={view === "files"}
+                onClick={() => goToView("files")}
               />
             </RibbonGroup>
             <RibbonGroup label="Show/Hide">

@@ -11,6 +11,7 @@ import {
 import { Icon } from "../Icon";
 import { DatePicker } from "../DatePicker";
 import { ConfirmDialog } from "../ConfirmDialog";
+import { RichTextEditor } from "../RichTextEditor";
 import { useMockProject } from "../../context/MockProjectContext";
 import { useStatusBar } from "../../context/StatusBarContext";
 import { useToast } from "../../context/ToastContext";
@@ -444,17 +445,18 @@ function NotesTab({
   const { updateTask } = useMockProject();
 
   return (
-    <label className="flex h-full min-h-[8rem] flex-col gap-1 text-xs">
+    <div className="flex h-full min-h-[8rem] flex-col gap-1 text-xs">
       <span className="text-[10px] font-medium uppercase tracking-wide text-nest-muted">
         Notes
       </span>
-      <textarea
+      <RichTextEditor
         value={task.notes ?? ""}
+        onChange={(html) => updateTask(task.id, { notes: html })}
         placeholder="Task notes…"
-        onChange={(event) => updateTask(task.id, { notes: event.target.value })}
-        className="min-h-[6rem] flex-1 resize-none rounded-nest-md border border-nest-border bg-nest-background px-3 py-2 text-nest-foreground focus:border-nest-primary focus:outline-none focus:ring-1 focus:ring-nest-primary/30"
+        ariaLabel="Task notes"
+        className="min-h-[6rem] flex-1 text-xs"
       />
-    </label>
+    </div>
   );
 }
 

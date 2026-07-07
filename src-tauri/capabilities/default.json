@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "Default capabilities for the Nest desktop template",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": ["core:default", "swift:default"]
 }

@@ -6,20 +6,33 @@ import {
   faMagnifyingGlass,
   faPlus,
   faThumbtack,
+  faTrash,
 } from "../../lib/fontawesome";
 import { Icon } from "../Icon";
+import { ConfirmDialog } from "../ConfirmDialog";
 import { useMockProject } from "../../context/MockProjectContext";
 import { useStatusBar } from "../../context/StatusBarContext";
 import { useToast } from "../../context/ToastContext";
 import { viewToPath } from "../../context/ProjectViewContext";
+import type { MockProject } from "../../mock/demo";
 
 export function ProjectCenterView() {
-  const { projects, openProject, openNewProject } = useMockProject();
+  const {
+    projects,
+    project: activeProject,
+    openProject,
+    openNewProject,
+    archiveProject,
+    deleteProject,
+    toggleProjectPinned,
+  } = useMockProject();
   const navigate = useNavigate();
   const { setStatus } = useStatusBar();
   const toast = useToast();
   const [query, setQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [archiveTarget, setArchiveTarget] = useState<MockProject | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<MockProject | null>(null);
 
   const filtered = projects.filter((p) => {
     if (!showArchived && p.archived) return false;
@@ -32,6 +45,31 @@ export function ProjectCenterView() {
     navigate(viewToPath("gantt"));
     setStatus(`Opened project: ${name}`, { variant: "success" });
     toast.success(`Opened project: ${name}`);
+  };
+
+  const confirmArchive = () => {
+    if (!archiveTarget) {
+      return;
+    }
+    archiveProject(archiveTarget.id);
+    setStatus(`Archived project: ${archiveTarget.name}`, { variant: "success" });
+    toast.success(`Archived "${archiveTarget.name}"`);
+    setArchiveTarget(null);
+  };
+
+  const confirmDelete = () => {
+    if (!deleteTarget) {
+      return;
+    }
+    const name = deleteTarget.name;
+    const wasActive = deleteTarget.id === activeProject.id;
+    deleteProject(deleteTarget.id);
+    setStatus(`Deleted project: ${name}`, { variant: "success" });
+    toast.success(`Deleted "${name}"`);
+    setDeleteTarget(null);
+    if (wasActive) {
+      navigate(viewToPath("projects"));
+    }
   };
 
   return (
@@ -86,7 +124,7 @@ export function ProjectCenterView() {
               <th className="px-3 py-2 font-medium">% Complete</th>
               <th className="px-3 py-2 font-medium">Finish</th>
               <th className="px-3 py-2 font-medium">Manager</th>
-              <th className="px-3 py-2 font-medium" />
+              <th className="px-3 py-2 font-medium text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -134,21 +172,106 @@ export function ProjectCenterView() {
                 </td>
                 <td className="px-3 py-2.5 text-nest-muted">{project.finish}</td>
                 <td className="px-3 py-2.5 text-nest-muted">{project.manager}</td>
-                <td className="px-3 py-2.5 text-right">
-                  <button
-                    type="button"
-                    onClick={() => handleOpen(project.id, project.name)}
-                    className="inline-flex items-center gap-1 rounded-nest-sm border border-nest-border px-2.5 py-1 text-xs hover:bg-nest-muted/10"
-                  >
-                    <Icon icon={faFolderOpen} className="size-3.5" />
-                    Open
-                  </button>
+                <td className="px-3 py-2.5">
+                  <div className="flex items-center justify-end gap-1">
+                    <ActionButton
+                      label={project.pinned ? "Unpin" : "Pin"}
+                      icon={faThumbtack}
+                      active={project.pinned}
+                      onClick={() => toggleProjectPinned(project.id)}
+                    />
+                    {!project.archived ? (
+                      <ActionButton
+                        label="Archive"
+                        icon={faBoxArchive}
+                        onClick={() => setArchiveTarget(project)}
+                      />
+                    ) : null}
+                    <ActionButton
+                      label="Delete"
+                      icon={faTrash}
+                      danger
+                      onClick={() => setDeleteTarget(project)}
+                    />
+                    <ActionButton
+                      label="Open"
+                      icon={faFolderOpen}
+                      primary
+                      onClick={() => handleOpen(project.id, project.name)}
+                    />
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      <ConfirmDialog
+        open={archiveTarget !== null}
+        title="Archive Project"
+        icon={faBoxArchive}
+        confirmLabel="Archive"
+        message={
+          archiveTarget
+            ? `Archive "${archiveTarget.name}"?\n\nAll tasks will be marked 100% complete and the project will be hidden from the default list. Tasks and knowledge are retained.`
+            : ""
+        }
+        onConfirm={confirmArchive}
+        onCancel={() => setArchiveTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Delete Project"
+        icon={faTrash}
+        confirmLabel="Delete"
+        danger
+        message={
+          deleteTarget
+            ? `Permanently delete "${deleteTarget.name}"?\n\nThis removes all tasks, knowledge, and links for this project. This cannot be undone.`
+            : ""
+        }
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
+  );
+}
+
+function ActionButton({
+  label,
+  icon,
+  onClick,
+  active,
+  primary,
+  danger,
+}: {
+  label: string;
+  icon: typeof faFolderOpen;
+  onClick: () => void;
+  active?: boolean;
+  primary?: boolean;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      title={label}
+      onClick={onClick}
+      className={[
+        "inline-flex items-center gap-1 rounded-nest-sm border px-2 py-1 text-xs",
+        primary
+          ? "border-nest-border hover:bg-nest-muted/10"
+          : danger
+            ? "border-nest-error/40 text-nest-error hover:bg-nest-error/10"
+            : active
+              ? "border-nest-primary/40 bg-nest-primary/10 text-nest-primary"
+              : "border-transparent text-nest-muted hover:bg-nest-muted/10 hover:text-nest-foreground",
+      ].join(" ")}
+    >
+      <Icon icon={icon} className="size-3.5" />
+      <span className="sr-only">{label}</span>
+    </button>
   );
 }

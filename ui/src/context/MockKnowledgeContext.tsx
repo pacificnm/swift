@@ -2,11 +2,29 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import { useMockProject } from "./MockProjectContext";
+import {
+  hasSwiftData,
+  listKnowledgeArticles,
+  listKnowledgeCategories,
+  listKnowledgeRevisions,
+  createKnowledgeCategory as apiCreateCategory,
+  createKnowledgeArticle as apiCreateArticle,
+  addKnowledgeRevision as apiAddRevision,
+} from "../lib/swift";
+import {
+  dbArticleToMock,
+  dbCategoryToMock,
+  newArticleToDb,
+  newCategoryToDb,
+  newRevisionToDb,
+} from "../lib/swiftAdapters";
 import {
   buildInitialArticlesByProject,
   buildInitialCategoriesByProject,
@@ -63,12 +81,13 @@ function matchesSearch(article: MockKnowledgeArticle, query: string): boolean {
 
 export function MockKnowledgeProvider({ children }: { children: ReactNode }) {
   const { project } = useMockProject();
+  // Desktop shell loads knowledge from PostgreSQL only; browser dev keeps the seed.
   const [categoriesByProject, setCategoriesByProject] = useState<
     Record<string, MockKnowledgeCategory[]>
-  >(buildInitialCategoriesByProject);
+  >(() => (hasSwiftData() ? {} : buildInitialCategoriesByProject()));
   const [articlesByProject, setArticlesByProject] = useState<
     Record<string, MockKnowledgeArticle[]>
-  >(buildInitialArticlesByProject);
+  >(() => (hasSwiftData() ? {} : buildInitialArticlesByProject()));
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
   const [selectedRevisionId, setSelectedRevisionId] = useState<string | null>(null);
@@ -76,6 +95,44 @@ export function MockKnowledgeProvider({ children }: { children: ReactNode }) {
   const [newCategoryOpen, setNewCategoryOpen] = useState(false);
   const [newArticleOpen, setNewArticleOpen] = useState(false);
   const [focusSearchRequest, setFocusSearchRequest] = useState(0);
+
+  // Load knowledge for the active project from PostgreSQL when running in the
+  // desktop shell. Each project is fetched once; browser dev keeps the seed.
+  const loadedProjectsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!hasSwiftData() || !project.id || loadedProjectsRef.current.has(project.id)) {
+      return;
+    }
+    loadedProjectsRef.current.add(project.id);
+    let cancelled = false;
+    (async () => {
+      try {
+        const [dbCategories, dbArticles] = await Promise.all([
+          listKnowledgeCategories(project.id),
+          listKnowledgeArticles(project.id),
+        ]);
+        const articles = await Promise.all(
+          dbArticles.map(async (article) =>
+            dbArticleToMock(article, await listKnowledgeRevisions(article.id)),
+          ),
+        );
+        if (cancelled) {
+          return;
+        }
+        setCategoriesByProject((prev) => ({
+          ...prev,
+          [project.id]: dbCategories.map(dbCategoryToMock),
+        }));
+        setArticlesByProject((prev) => ({ ...prev, [project.id]: articles }));
+      } catch (error) {
+        loadedProjectsRef.current.delete(project.id);
+        console.error("Swift: failed to load knowledge from database", error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [project.id]);
 
   const openNewCategory = useCallback(() => setNewCategoryOpen(true), []);
   const closeNewCategory = useCallback(() => setNewCategoryOpen(false), []);
@@ -89,8 +146,9 @@ export function MockKnowledgeProvider({ children }: { children: ReactNode }) {
   const createCategory = useCallback(
     (input: NewKnowledgeCategoryInput): MockKnowledgeCategory => {
       const list = categoriesByProject[project.id] ?? [];
+      const id = crypto.randomUUID();
       const category: MockKnowledgeCategory = {
-        id: `kc-${crypto.randomUUID().slice(0, 8)}`,
+        id,
         projectId: project.id,
         name: input.name.trim(),
         description: input.description?.trim() || undefined,
@@ -102,6 +160,11 @@ export function MockKnowledgeProvider({ children }: { children: ReactNode }) {
       }));
       setSelectedCategoryId(category.id);
       setNewCategoryOpen(false);
+      if (hasSwiftData() && project.id) {
+        apiCreateCategory(newCategoryToDb(id, project.id, input, list.length)).catch(
+          (error) => console.error("Swift: create category failed", error),
+        );
+      }
       return category;
     },
     [categoriesByProject, project.id],
@@ -110,8 +173,10 @@ export function MockKnowledgeProvider({ children }: { children: ReactNode }) {
   const createArticle = useCallback(
     (input: NewKnowledgeArticleInput): MockKnowledgeArticle => {
       const now = new Date().toISOString().slice(0, 10);
+      const articleId = crypto.randomUUID();
+      const revisionId = crypto.randomUUID();
       const revision: MockKnowledgeRevision = {
-        id: `kr-${crypto.randomUUID().slice(0, 8)}`,
+        id: revisionId,
         revisionNumber: 1,
         title: input.title.trim(),
         body: input.body.trim(),
@@ -120,7 +185,7 @@ export function MockKnowledgeProvider({ children }: { children: ReactNode }) {
         changeNote: "Created",
       };
       const article: MockKnowledgeArticle = {
-        id: `ka-${crypto.randomUUID().slice(0, 8)}`,
+        id: articleId,
         projectId: project.id,
         categoryId: input.categoryId,
         title: input.title.trim(),
@@ -140,6 +205,18 @@ export function MockKnowledgeProvider({ children }: { children: ReactNode }) {
       setSelectedArticleId(article.id);
       setSelectedRevisionId(revision.id);
       setNewArticleOpen(false);
+      if (hasSwiftData() && project.id) {
+        (async () => {
+          try {
+            await apiCreateArticle(newArticleToDb(articleId, project.id, input));
+            await apiAddRevision(
+              newRevisionToDb(revisionId, articleId, input.title, input.body, "You", "Created"),
+            );
+          } catch (error) {
+            console.error("Swift: create article failed", error);
+          }
+        })();
+      }
       return article;
     },
     [project.id],
