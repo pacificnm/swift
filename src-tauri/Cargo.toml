@@ -15,6 +15,7 @@ nest-core = { path = "../../../core/crates/nest-core" }
 nest-data-postgres = { path = "../../../modules/crates/nest-data-postgres" }
 nest-design = { path = "../../../core/crates/nest-design" }
 nest-image = { path = "../../../core/crates/nest-image" }
+nest-logging = { path = "../../../core/crates/nest-logging" }
 nest-tauri = { path = "../../../core/crates/nest-tauri", features = ["runtime", "async", "images"] }
 nest-theme = { path = "../../../core/crates/nest-theme" }
 swift-data = { path = "../crates/swift-data" }
@@ -27,5 +28,6 @@ tauri = { version = "2", features = [] }
 tokio = { version = "1", features = ["sync"] }
 tracing = "0.1"
 uuid = { version = "1", features = ["serde", "v4"] }
+dirs = "6.0.0"
 
 [workspace]

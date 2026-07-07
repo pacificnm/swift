@@ -2,8 +2,6 @@
 
 mod commands;
 mod data;
-mod theme;
-mod theme_module;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -11,8 +9,9 @@ use std::sync::Arc;
 use nest_cache::Cache;
 use nest_cache_file::{FileCacheAdapter, FileCacheConfig};
 use nest_image::ImageModule;
+use nest_logging::LoggingConfig;
 use nest_tauri::TauriApp;
-use theme_module::SwiftThemeModule;
+use nest_theme::ThemeModule;
 
 use crate::data::SwiftData;
 
@@ -32,6 +31,24 @@ fn resolve_config_path() -> Option<PathBuf> {
     None
 }
 
+/// Chooses a writable log directory for the current run.
+///
+/// Under `tauri dev` the working directory is `src-tauri/` (where
+/// `tauri.conf.json` lives), so logs go to `../logs` (i.e. `apps/swift/logs`),
+/// keeping them out of `src-tauri/` so the dev watcher does not rebuild. A
+/// shipped binary can be launched from anywhere (e.g. `~`), where `../logs`
+/// would resolve to an unwritable path; there we use the platform data dir
+/// (`~/.local/share/swift/logs`, `~/Library/Application Support/swift/logs`,
+/// `%APPDATA%\\swift\\logs`), falling back to the temp dir.
+fn resolve_log_dir() -> PathBuf {
+    if PathBuf::from("tauri.conf.json").exists() {
+        return PathBuf::from("../logs");
+    }
+    dirs::data_dir()
+        .map(|dir| dir.join("swift").join("logs"))
+        .unwrap_or_else(|| std::env::temp_dir().join("swift").join("logs"))
+}
+
 fn main() {
     let cache_root = std::env::temp_dir().join("swift-cache");
     let cache = Cache::new(Arc::new(
@@ -40,7 +57,8 @@ fn main() {
     ));
 
     let mut app = TauriApp::new("swift")
-        .module(SwiftThemeModule)
+        .with_logging(LoggingConfig::for_tauri("swift").with_file(resolve_log_dir()))
+        .module(ThemeModule::default())
         .module(ImageModule::with_cache(cache));
 
     if let Some(config_path) = resolve_config_path() {
