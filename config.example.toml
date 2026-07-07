@@ -1,0 +1,33 @@
+[tauri]
+title = "Swift"
+width = 1400
+height = 900
+
+[database]
+# Remote PostgreSQL (pgvector required). Same server as Ollama is fine.
+# Override at runtime: export DATABASE_URL="postgresql://user:pass@host:5432/swift"
+url = "postgresql://swift:CHANGE_ME@server.lan:5432/swift"
+
+[ollama]
+base_url = "http://server.lan:11434"
+default_model = "qwen2.5-coder:3b"
+
+[embeddings]
+provider = "ollama"
+model = "nomic-embed-text"
+dimensions = 768
+# Uses [ollama].base_url — POST /api/embed
+# Pull on server: ollama pull nomic-embed-text
+# Optional OpenAI instead: provider = "openai", model = "text-embedding-3-small", dimensions = 1536
+
+[agent]
+max_steps = 8
+tool_timeout_secs = 60
+allow_writes = false
+allow_file_writes = false
+
+[agent.mcp]
+# Swift MCP config file (copy mcp.example.json → mcp.json). Not Cursor IDE config.
+config_path = "mcp.json"
+enabled = false
+# servers = []   # optional allowlist of server ids from mcp.json

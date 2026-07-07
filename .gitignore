@@ -1,0 +1,17 @@
+# Local secrets — copy from *.example.*
+config.toml
+mcp.json
+
+# Logs (outside src-tauri per nest-logging for_tauri)
+logs/
+src-tauri/logs/
+
+# Frontend
+ui/node_modules/
+ui/dist/
+ui/tsconfig.tsbuildinfo
+
+# Rust / Tauri
+src-tauri/target/
+src-tauri/gen/
+Cargo.lock

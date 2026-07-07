@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CBRE-inspired defaults (overridden at runtime by nest_theme_css) */
+:root {
+  --nest-color-background: #ffffff;
+  --nest-color-foreground: #1c293c;
+  --nest-color-primary: #003f2d;
+  --nest-color-secondary: #006a4d;
+  --nest-color-border: #b8bfc6;
+  --nest-color-surface: #f4f4f1;
+  --nest-color-accent: #69be28;
+  --nest-color-muted: #4a5568;
+  --nest-color-success: #006a4d;
+  --nest-color-warning: #b45309;
+  --nest-color-error: #b91c1c;
+  --nest-color-info: #003f2d;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  min-height: 100vh;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.toast-enter {
+  animation: toast-in 0.2s ease-out;
+}
